@@ -41,11 +41,22 @@ tabsParent.addEventListener('click', (event) => {
 const deadLine = '2023-01-31';
 
 function getTimeRemaining (endtime) {
+    let days, hours, minutes, second;
     const t = Date.parse(endtime) - Date.parse(new Date());
-    days = Math.floor(t / (1000 * 60 * 60 * 24)),
-    hours = Math.floor((t / (1000 * 60 * 60) % 24)), 
-    minutes = Math.floor((t / 1000 /60) % 60),
-    second = Math.floor((t / 1000) % 60);
+
+    if (t <= 0) {
+        days = 0;
+        hours = 0;
+        minutes = 0;
+        second = 0;
+    } else {
+        days = Math.floor(t / (1000 * 60 * 60 * 24)),
+        hours = Math.floor((t / (1000 * 60 * 60) % 24)), 
+        minutes = Math.floor((t / 1000 /60) % 60),
+        second = Math.floor((t / 1000) % 60);
+    }
+
+ 
 
     return {
         'total': t,
@@ -88,4 +99,41 @@ function setClock(selector, endtime) {
 
 setClock('.timer', deadLine);
 
+
+            // Modal
+            const modalTrigger = document.querySelectorAll('[data-modal]'),
+            modal = document.querySelector('.modal'),
+            modalCloseBtn = document.querySelector('[data-close]');
+    
+        modalTrigger.forEach(btn => {
+            btn.addEventListener('click', function() {
+                modal.classList.add('show');
+                modal.classList.remove('hide');
+                // Либо вариант с toggle - но тогда назначить класс в верстке
+                document.body.style.overflow = 'hidden';
+            });
+        });
+    
+        function closeModal() {
+            modal.classList.add('hide');
+            modal.classList.remove('show');
+            // Либо вариант с toggle - но тогда назначить класс в верстке
+            document.body.style.overflow = '';
+        }
+        
+        modalCloseBtn.addEventListener('click', closeModal);
+    
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    
+        document.addEventListener('keydown', (e) => {
+            if (e.code === "Escape" && modal.classList.contains('show')) { 
+                closeModal();
+            }
+        });
+
+    
 });
