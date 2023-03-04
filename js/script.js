@@ -41,7 +41,7 @@ window.addEventListener('DOMContentLoaded', function() {
     
     // Timer
 
-    const deadline = '2023-02-11';
+    const deadline = '2023-04-03';
 
     function getTimeRemaining(endtime) {
         const t = Date.parse(endtime) - Date.parse(new Date()),
@@ -97,8 +97,7 @@ window.addEventListener('DOMContentLoaded', function() {
     // Modal
 
     const modalTrigger = document.querySelectorAll('[data-modal]'),
-        modal = document.querySelector('.modal'),
-        modalCloseBtn = document.querySelector('[data-close]');
+        modal = document.querySelector('.modal');
 
     modalTrigger.forEach(btn => {
         btn.addEventListener('click', openModal);
@@ -116,11 +115,9 @@ window.addEventListener('DOMContentLoaded', function() {
         document.body.style.overflow = 'hidden';
         clearInterval(modalTimerId);
     }
-    
-    modalCloseBtn.addEventListener('click', closeModal);
 
     modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
+        if (e.target === modal || e.target.getAttribute('data-close') == "") {
             closeModal();
         }
     });
@@ -185,32 +182,12 @@ window.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    new MenuCard(
-        "img/tabs/vegy.jpg",
-        "vegy",
-        'Меню "Фитнес"',
-        'Меню "Фитнес" - это новый подход к приготовлению блюд: больше свежих овощей и фруктов. Продукт активных и здоровых людей. Это абсолютно новый продукт с оптимальной ценой и высоким качеством!',
-        9,
-        ".menu .container"
-    ).render();
-
-    new MenuCard(
-        "img/tabs/post.jpg",
-        "post",
-        'Меню "Постное"',
-        'Меню “Постное” - это тщательный подбор ингредиентов: полное отсутствие продуктов животного происхождения, молоко из миндаля, овса, кокоса или гречки, правильное количество белков за счет тофу и импортных вегетарианских стейков.',
-        14,
-        ".menu .container"
-    ).render();
-
-    new MenuCard(
-        "img/tabs/elite.jpg",
-        "elite",
-        'Меню “Премиум”',
-        'В меню “Премиум” мы используем не только красивый дизайн упаковки, но и качественное исполнение блюд. Красная рыба, морепродукты, фрукты - ресторанное меню без похода в ресторан!',
-        21,
-        ".menu .container"
-    ).render();
+    getResource('http://localhost:3000/menu')
+        .then(data => {
+            data.forEach(({img, altimg, title, descr, price}) => {
+                new MenuCard(img, altimg, title, descr, price, ".menu .container").render();
+            });
+        });
 
     // Forms
 
@@ -222,10 +199,32 @@ window.addEventListener('DOMContentLoaded', function() {
     };
 
     forms.forEach(item => {
-        postData(item);
+        bindPostData(item);
     });
 
-    function postData(form) {
+    const postData = async (url, data) => {
+        let res = await fetch(url, {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: data
+        });
+    
+        return await res.json();
+    };
+
+    async function getResource(url) {
+        let res = await fetch(url);
+    
+        if (!res.ok) {
+            throw new Error(`Could not fetch ${url}, status: ${res.status}`);
+        }
+    
+        return await res.json();
+    }
+
+    function bindPostData(form) {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
 
@@ -237,28 +236,19 @@ window.addEventListener('DOMContentLoaded', function() {
             `;
             form.insertAdjacentElement('afterend', statusMessage);
         
-            const request = new XMLHttpRequest();
-            request.open('POST', 'server.php');
-            request.setRequestHeader('Content-type', 'application/json; charset=utf-8');
             const formData = new FormData(form);
 
-            const object = {};
-            formData.forEach(function(value, key){
-                object[key] = value;
-            });
-            const json = JSON.stringify(object);
+            const json = JSON.stringify(Object.fromEntries(formData.entries()));
 
-            request.send(json);
-
-            request.addEventListener('load', () => {
-                if (request.status === 200) {
-                    console.log(request.response);
-                    showThanksModal(message.success);
-                    statusMessage.remove();
-                    form.reset();
-                } else {
-                    showThanksModal(message.failure);
-                }
+            postData('http://localhost:3000/requests', json)
+            .then(data => {
+                console.log(data);
+                showThanksModal(message.success);
+                statusMessage.remove();
+            }).catch(() => {
+                showThanksModal(message.failure);
+            }).finally(() => {
+                form.reset();
             });
         });
     }
@@ -364,10 +354,10 @@ window.addEventListener('DOMContentLoaded', function() {
     }
 
     next.addEventListener('click', () => {
-        if (offset == (+width.slice(0, width.length - 2) * (slides.length - 1))) {
+        if (offset == (deleteNotDigits(width) * (slides.length - 1))) {
             offset = 0;
         } else {
-            offset += +width.slice(0, width.length - 2); 
+            offset += deleteNotDigits(width); 
         }
 
         slidesField.style.transform = `translateX(-${offset}px)`;
@@ -390,9 +380,9 @@ window.addEventListener('DOMContentLoaded', function() {
 
     prev.addEventListener('click', () => {
         if (offset == 0) {
-            offset = +width.slice(0, width.length - 2) * (slides.length - 1);
+            offset = deleteNotDigits(width) * (slides.length - 1);
         } else {
-            offset -= +width.slice(0, width.length - 2);
+            offset -= deleteNotDigits(width);
         }
 
         slidesField.style.transform = `translateX(-${offset}px)`;
@@ -418,7 +408,7 @@ window.addEventListener('DOMContentLoaded', function() {
             const slideTo = e.target.getAttribute('data-slide-to');
 
             slideIndex = slideTo;
-            offset = +width.slice(0, width.length - 2) * (slideTo - 1);
+            offset = deleteNotDigits(width) * (slideTo - 1);
 
             slidesField.style.transform = `translateX(-${offset}px)`;
 
@@ -433,4 +423,54 @@ window.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    function deleteNotDigits(str) {
+        return +str.replace(/\D/g, '');
+    }
+
+    //Calk
+
+    const result = document.querySelector('.calculating__result span'); 
+    let sex, height, weight, age, ratio;
+    
+    function calcTotal () {
+        if(!sex || !height || !weight || !age || !ratio ){
+            result.textContent = '___';
+            return;
+        }
+        if(sex === 'female'){
+            result.textContent = ( 447.6 + (9.2 * weight) + (3.1 * height) - (4.3 * age)) * ratio;
+        } else {
+            result.textContent = (88.36 + (13.4 * weight) + (4.8 * height) - (5.7 * age)) * ratio;
+        }
+    } 
+    calcTotal ();
+
+    function getStaticInformation(parentSelector, activeClass) {
+        const elements = document.querySelectorAll(`${parentSelector} div`);
+
+        document.querySelector(parentSelector).addEventListener('click', (e) => {
+            if(e.target.getAttribute('data-ratio')) {
+                ratio = +e.target.getAttribute('data-ratio')
+            } else {
+                sex = e.target.getAttribute('id');
+            }
+            console.log(ratio, sex);
+            elements.forEach(elem => {
+                elem.classList.remove(activeClass);
+            });
+            e.target.classList.add(activeClass);
+
+        });
+
+    }
+    getStaticInformation('#gender','calculating__choose-item_active');
+    getStaticInformation('.calculating__choose_big','calculating__choose-item_active');
+
+    function getDynamicInformation(selector) {
+        const input = document.querySelector('selector'); 
+
+        input.addEventListener('input', () => {
+            
+        });
+    }
 });
